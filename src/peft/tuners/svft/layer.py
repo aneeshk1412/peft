@@ -38,6 +38,9 @@ class SVFTLayer(LoraLayer):
     def update_layer(self, adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_weights):
         if r <= 0:
             raise ValueError(f"`r` should be a positive integer, but the value passed is {r}")
+        ## truncate r
+        if r > min(self.in_features, self.out_features):
+            r = min(self.in_features, self.out_features)
 
         self.r[adapter_name] = r
         self.lora_alpha[adapter_name] = lora_alpha
@@ -73,11 +76,13 @@ class SVFTLayer(LoraLayer):
 
     def reset_lora_parameters(self, adapter_name, init_weights):
         if adapter_name in self.lora_A.keys():
+            ## initialize s
             if init_weights in ["s_kunif", "suv_kunif"]:
                 nn.init.kaiming_uniform_(self.lora_E[adapter_name])
             else:
                 nn.init.zeros_(self.lora_E[adapter_name])
 
+            ## initialize u and v
             if init_weights in ["uv_kunif", "suv_kunif"]:
                 nn.init.kaiming_uniform_(self.lora_A[adapter_name])
                 nn.init.kaiming_uniform_(self.lora_B[adapter_name])
@@ -88,7 +93,6 @@ class SVFTLayer(LoraLayer):
                     u, _, vt = torch.linalg.svd(self.get_base_layer().qweight, full_matrices=True)
                 else:
                     u, _, vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=True)
-
 
                 if self.r[adapter_name] > min(u.shape[1], vt.shape[0]):
                     self.lora_A[adapter_name].data = u.T
