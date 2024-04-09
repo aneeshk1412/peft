@@ -35,7 +35,7 @@ class SVFTLayer(LoraLayer):
         self.lora_A = nn.ParameterDict({})
         self.lora_B = nn.ParameterDict({})
 
-    def update_layer(self, adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_lora_weights):
+    def update_layer(self, adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_weights):
         if r <= 0:
             raise ValueError(f"`r` should be a positive integer, but the value passed is {r}")
 
@@ -58,7 +58,7 @@ class SVFTLayer(LoraLayer):
         # Scaling factor (square root of the rank)
         self.scaling[adapter_name] = lora_alpha / sqrt(r) if lora_alpha > 0 else 1.0 / sqrt(r)
 
-        self.reset_lora_parameters(adapter_name)
+        self.reset_lora_parameters(adapter_name, init_weights)
 
         # For safety, we freeze the weights again
         self.lora_A[adapter_name].requires_grad = train_A
@@ -71,19 +71,31 @@ class SVFTLayer(LoraLayer):
             self.to(self.get_base_layer().weight.device)
         self.set_adapter(self.active_adapters)
 
-    def reset_lora_parameters(self, adapter_name):
+    def reset_lora_parameters(self, adapter_name, init_weights):
         if adapter_name in self.lora_A.keys():
-            if hasattr(self.get_base_layer(), "qweight"):
-                # QuantLinear
-                warnings.warn("SVD of quantized layer might be undefined.")
-                u, _, vt = torch.linalg.svd(self.get_base_layer().qweight, full_matrices=False)
+            if init_weights in ["s_kunif", "suv_kunif"]:
+                nn.init.kaiming_uniform_(self.lora_E[adapter_name])
             else:
-                u, _, vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=False)
+                nn.init.zeros_(self.lora_E[adapter_name])
 
-            nn.init.zeros_(self.lora_E[adapter_name])
+            if init_weights in ["uv_kunif", "suv_kunif"]:
+                nn.init.kaiming_uniform_(self.lora_A[adapter_name])
+                nn.init.kaiming_uniform_(self.lora_B[adapter_name])
+            else:
+                if hasattr(self.get_base_layer(), "qweight"):
+                    # QuantLinear
+                    warnings.warn("SVD of quantized layer might be undefined.")
+                    u, _, vt = torch.linalg.svd(self.get_base_layer().qweight, full_matrices=True)
+                else:
+                    u, _, vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=True)
 
-            self.lora_A[adapter_name].data = u[:, : self.r[adapter_name]].T
-            self.lora_B[adapter_name].data = vt[: self.r[adapter_name], :].T
+
+                if self.r[adapter_name] > min(u.shape[1], vt.shape[0]):
+                    self.lora_A[adapter_name].data = u.T
+                    self.lora_B[adapter_name].data = vt.T
+                else:
+                    self.lora_A[adapter_name].data = u[:, : self.r[adapter_name]].T
+                    self.lora_B[adapter_name].data = vt[: self.r[adapter_name], :].T
 
 
 class SVDLinear(nn.Module, SVFTLayer):
@@ -98,7 +110,7 @@ class SVDLinear(nn.Module, SVFTLayer):
         lora_alpha: int = 1,
         lora_dropout: float = 0.0,
         fan_in_fan_out: bool = False,
-        init_lora_weights: bool = True,
+        init_weights: str = "svd",
         **kwargs,
     ) -> None:
         super().__init__()
@@ -108,7 +120,7 @@ class SVDLinear(nn.Module, SVFTLayer):
 
         self.fan_in_fan_out = fan_in_fan_out
         self._active_adapter = adapter_name
-        self.update_layer(adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_lora_weights)
+        self.update_layer(adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_weights)
 
     def merge(self, safe_merge: bool = False, adapter_names: Optional[List[str]] = None) -> None:
         """

@@ -26,7 +26,7 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
         train_B: bool = False,
         lora_alpha: int = 1,
         lora_dropout: float = 0.0,
-        init_lora_weights: bool = True,
+        init_weights: str = "svd",
         **kwargs,
     ) -> None:
         super().__init__()
@@ -36,7 +36,7 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
         # for backwards compatibility
         self.quant_linear_module = base_layer
         self._active_adapter = adapter_name
-        self.update_layer(adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_lora_weights)
+        self.update_layer(adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_weights)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         result = self.quant_linear_module(x)

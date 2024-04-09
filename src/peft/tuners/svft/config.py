@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Literal
 
 from peft.tuners.lora import LoraConfig
 from peft.utils import PeftType
@@ -29,6 +29,12 @@ class SVFTConfig(LoraConfig):
             Set this to True if the left singular vectors of the weights are to be trained. Defaults to False.
         train_B (`bool`):
             Set this to True if the right singular vectors of the weights are to be trained. Defaults to False.
+        init_svft_weights (`Literal["svd", "s_kunif", "uv_kunif", "suv_kunif"]`):
+            How to initialize the weights of the SVFT layer. Defaults to "svd".
+            svd: Initialize the left and right singular vectors using SVD of the weight and the singular values to zero.
+            s_kunif: Initialize the singular values using a kaiming uniform distribution and the left and right singular vectors using the SVD of the weight matrix.
+            uv_kunif: Initialize the left and right singular vectors using a kaiming uniform distribution and the singular values to zero.
+            suv_kunif: Initialize the left and right singular vectors and singular values using a kaiming uniform distribution.
     """
     train_A: bool = field(
         default=False,
@@ -38,6 +44,18 @@ class SVFTConfig(LoraConfig):
         default=False,
         metadata={"help": "Set this to True if the right singular vectors of the weights are to be trained. Defaults to False."}
     )
+    init_weights: Literal["svd", "s_kunif", "uv_kunif", "suv_kunif"] = field(
+        default=True,
+        metadata={
+            "help": (
+                "How to initialize the weights of the SVFT layer. Defaults to 'svd'. "
+                "svd: Initialize the left and right singular vectors using SVD of the weight and the singular values to zero. "
+                "s_kunif: Initialize the singular values using a kaiming uniform distribution and the left and right singular vectors using the SVD of the weight matrix. "
+                "suv_kunif: Initialize the left and right singular vectors and singular values using a kaiming uniform distribution. "
+            ),
+        },
+    )
+
 
     def __post_init__(self):
         self.peft_type = PeftType.SVFT

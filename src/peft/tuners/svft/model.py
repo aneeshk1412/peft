@@ -117,6 +117,7 @@ class SVFTModel(LoraModel):
             "lora_dropout": lora_config.lora_dropout,
             "fan_in_fan_out": lora_config.fan_in_fan_out,
             "init_lora_weights": lora_config.init_lora_weights,
+            "init_weights": lora_config.init_weights,
             "loaded_in_8bit": getattr(self.model, "is_loaded_in_8bit", False),
             "loaded_in_4bit": getattr(self.model, "is_loaded_in_4bit", False),
         }
@@ -145,7 +146,7 @@ class SVFTModel(LoraModel):
                 lora_config.train_B,
                 lora_config.lora_alpha,
                 lora_config.lora_dropout,
-                lora_config.init_lora_weights,
+                lora_config.init_weights,
             )
 
     @staticmethod
