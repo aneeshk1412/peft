@@ -24,8 +24,21 @@ class SVFTConfig(LoraConfig):
     """
     This is the configuration class to store the configuration of a [`~peft.SVFT`].
 
-    Args: None
+    Args:
+        train_A (`bool`):
+            Set this to True if the left singular vectors of the weights are to be trained. Defaults to False.
+        train_B (`bool`):
+            Set this to True if the right singular vectors of the weights are to be trained. Defaults to False.
     """
+    train_A: bool = field(
+        default=False,
+        metadata={"help": "Set this to True if the left singular vectors of the weights are to be trained. Defaults to False."}
+    )
+    train_B: bool = field(
+        default=False,
+        metadata={"help": "Set this to True if the right singular vectors of the weights are to be trained. Defaults to False."}
+    )
 
     def __post_init__(self):
         self.peft_type = PeftType.SVFT
+        self.init_lora_weights = False

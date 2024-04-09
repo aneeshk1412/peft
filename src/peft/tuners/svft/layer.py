@@ -35,7 +35,7 @@ class SVFTLayer(LoraLayer):
         self.lora_A = nn.ParameterDict({})
         self.lora_B = nn.ParameterDict({})
 
-    def update_layer(self, adapter_name, r, lora_alpha, lora_dropout, init_lora_weights):
+    def update_layer(self, adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_lora_weights):
         if r <= 0:
             raise ValueError(f"`r` should be a positive integer, but the value passed is {r}")
 
@@ -49,11 +49,11 @@ class SVFTLayer(LoraLayer):
         self.lora_dropout[adapter_name] = lora_dropout_layer
         # Actual trainable parameters
         # Right singular vectors
-        self.lora_A[adapter_name] = nn.Parameter(torch.randn(r, self.in_features), requires_grad=False)
+        self.lora_A[adapter_name] = nn.Parameter(torch.randn(r, self.in_features), requires_grad=train_A)
         # Singular values
         self.lora_E[adapter_name] = nn.Parameter(torch.randn(r, 1))
         # Left singular vectors
-        self.lora_B[adapter_name] = nn.Parameter(torch.randn(self.out_features, r), requires_grad=False)
+        self.lora_B[adapter_name] = nn.Parameter(torch.randn(self.out_features, r), requires_grad=train_B)
 
         # Scaling factor (square root of the rank)
         self.scaling[adapter_name] = lora_alpha / sqrt(r) if lora_alpha > 0 else 1.0 / sqrt(r)
@@ -61,8 +61,8 @@ class SVFTLayer(LoraLayer):
         self.reset_lora_parameters(adapter_name)
 
         # For safety, we freeze the weights again
-        self.lora_A[adapter_name].requires_grad = False
-        self.lora_B[adapter_name].requires_grad = False
+        self.lora_A[adapter_name].requires_grad = train_A
+        self.lora_B[adapter_name].requires_grad = train_B
 
         if hasattr(self.get_base_layer(), "qweight"):
             # QuantLinear
@@ -92,7 +92,9 @@ class SVDLinear(nn.Module, SVFTLayer):
         self,
         base_layer: nn.Module,
         adapter_name: str,
-        r: int = 0,
+        r: int = 1,
+        train_A: bool = False,
+        train_B: bool = False,
         lora_alpha: int = 1,
         lora_dropout: float = 0.0,
         fan_in_fan_out: bool = False,
@@ -106,7 +108,7 @@ class SVDLinear(nn.Module, SVFTLayer):
 
         self.fan_in_fan_out = fan_in_fan_out
         self._active_adapter = adapter_name
-        self.update_layer(adapter_name, r, lora_alpha, lora_dropout, init_lora_weights)
+        self.update_layer(adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_lora_weights)
 
     def merge(self, safe_merge: bool = False, adapter_names: Optional[List[str]] = None) -> None:
         """

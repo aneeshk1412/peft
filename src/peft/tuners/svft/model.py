@@ -18,7 +18,7 @@ import torch
 from transformers.pytorch_utils import Conv1D
 
 from peft.import_utils import is_bnb_4bit_available, is_bnb_available
-from peft.tuners.lora import LoraConfig, LoraModel
+from peft.tuners.lora import LoraModel
 from peft.tuners.tuners_utils import BaseTunerLayer
 from peft.utils import (
     TRANSFORMERS_MODELS_TO_SVFT_TARGET_MODULES_MAPPING,
@@ -29,7 +29,7 @@ from peft.utils import (
 
 from .gptq import SVDQuantLinear
 from .layer import SVFTLayer, SVDLinear
-
+from .config import SVFTConfig
 
 class SVFTModel(LoraModel):
     """
@@ -45,7 +45,8 @@ class SVFTModel(LoraModel):
 
     Example::
 
-        >>> from transformers import AutoModelForSeq2SeqLM, LoraConfig >>> from peft import SVFTModel, SVFTConfig
+        >>> from transformers import AutoModelForSeq2SeqLM
+        >>> from peft import SVFTModel, SVFTConfig
         >>> config = SVFTConfig(
                 peft_type="SVFT", task_type="SEQ_2_SEQ_LM", r=8, lora_alpha=32, target_modules=["q", "v"],
                 lora_dropout=0.01,
@@ -78,7 +79,7 @@ class SVFTModel(LoraModel):
         else:
             self.trainable_adapter_name = adapter_name
 
-    def _check_new_adapter_config(self, config: LoraConfig) -> None:
+    def _check_new_adapter_config(self, config: SVFTConfig) -> None:
         """
         A helper method to check the config when a new adapter is being added.
 
@@ -110,6 +111,8 @@ class SVFTModel(LoraModel):
     ):
         kwargs = {
             "r": lora_config.r,
+            "train_A": lora_config.train_A,
+            "train_B": lora_config.train_B,
             "lora_alpha": lora_config.lora_alpha,
             "lora_dropout": lora_config.lora_dropout,
             "fan_in_fan_out": lora_config.fan_in_fan_out,
@@ -138,6 +141,8 @@ class SVFTModel(LoraModel):
             target.update_layer(
                 adapter_name,
                 lora_config.r,
+                lora_config.train_A,
+                lora_config.train_B,
                 lora_config.lora_alpha,
                 lora_config.lora_dropout,
                 lora_config.init_lora_weights,
