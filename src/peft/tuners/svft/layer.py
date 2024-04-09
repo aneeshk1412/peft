@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import warnings
-from typing import Any, List, Optional
 from math import sqrt
+from typing import Any, List, Optional
 
 import torch
 from torch import nn
@@ -26,7 +26,7 @@ from peft.utils import transpose
 
 class SVFTLayer(LoraLayer):
     # List all names of layers that may contain adapter weights
-    adapter_layer_names = ("lora_E", )
+    adapter_layer_names = ("lora_E",)
     # other_param_names is defined in LoraLayer
 
     def __init__(self, base_layer: nn.Module) -> None:
@@ -90,16 +90,16 @@ class SVFTLayer(LoraLayer):
                 if hasattr(self.get_base_layer(), "qweight"):
                     # QuantLinear
                     warnings.warn("SVD of quantized layer might be undefined.")
-                    u, _, vt = torch.linalg.svd(self.get_base_layer().qweight, full_matrices=True)
+                    u, _, vt = torch.linalg.svd(self.get_base_layer().qweight, full_matrices=False)
                 else:
-                    u, _, vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=True)
+                    u, _, vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=False)
 
                 if self.r[adapter_name] > min(u.shape[1], vt.shape[0]):
-                    self.lora_A[adapter_name].data = u.T
-                    self.lora_B[adapter_name].data = vt.T
+                    self.lora_A[adapter_name].data = vt
+                    self.lora_B[adapter_name].data = u
                 else:
-                    self.lora_A[adapter_name].data = u[:, : self.r[adapter_name]].T
-                    self.lora_B[adapter_name].data = vt[: self.r[adapter_name], :].T
+                    self.lora_A[adapter_name].data = vt[: self.r[adapter_name], :]
+                    self.lora_B[adapter_name].data = u[:, : self.r[adapter_name]]
 
 
 class SVDLinear(nn.Module, SVFTLayer):
