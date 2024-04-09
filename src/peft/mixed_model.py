@@ -29,6 +29,7 @@ from .config import PeftConfig
 from .peft_model import PeftModel
 from .tuners import (
     AdaLoraModel,
+    SVFTModel,
     IA3Model,
     LoHaModel,
     LoKrModel,
@@ -44,6 +45,7 @@ PEFT_TYPE_TO_MODEL_MAPPING = {
     PeftType.LOHA: LoHaModel,
     PeftType.LOKR: LoKrModel,
     PeftType.ADALORA: AdaLoraModel,
+    PeftType.SVFT: SVFTModel,
     PeftType.IA3: IA3Model,
     PeftType.OFT: OFTModel,
 }

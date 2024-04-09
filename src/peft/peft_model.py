@@ -40,6 +40,7 @@ from . import __version__
 from .config import PeftConfig
 from .tuners import (
     AdaLoraModel,
+    SVFTModel,
     AdaptionPromptModel,
     IA3Model,
     LoHaModel,
@@ -80,6 +81,7 @@ PEFT_TYPE_TO_MODEL_MAPPING = {
     PeftType.P_TUNING: PromptEncoder,
     PeftType.PREFIX_TUNING: PrefixEncoder,
     PeftType.ADALORA: AdaLoraModel,
+    PeftType.SVFT: SVFTModel,
     PeftType.ADAPTION_PROMPT: AdaptionPromptModel,
     PeftType.IA3: IA3Model,
     PeftType.OFT: OFTModel,
