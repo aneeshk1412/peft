@@ -253,12 +253,14 @@ def set_peft_model_state_dict(
         PeftType.IA3,
         PeftType.OFT,
         PeftType.POLY,
+        PeftType.SVFT,
     ):
         peft_model_state_dict = {}
         parameter_prefix = {
             PeftType.IA3: "ia3_",
             PeftType.LORA: "lora_",
             PeftType.ADALORA: "lora_",
+            PeftType.SVFT: "lora_",
             PeftType.LOHA: "hada_",
             PeftType.LOKR: "lokr_",
             PeftType.OFT: "oft_",
