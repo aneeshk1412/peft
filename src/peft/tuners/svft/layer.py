@@ -95,11 +95,11 @@ class SVFTLayer(LoraLayer):
                     u, _, vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=False)
 
                 if self.r[adapter_name] > min(u.shape[1], vt.shape[0]):
-                    self.lora_A[adapter_name].data = vt
-                    self.lora_B[adapter_name].data = u
+                    self.lora_A[adapter_name].data = vt.contiguous()
+                    self.lora_B[adapter_name].data = u.contiguous()
                 else:
-                    self.lora_A[adapter_name].data = vt[: self.r[adapter_name], :]
-                    self.lora_B[adapter_name].data = u[:, : self.r[adapter_name]]
+                    self.lora_A[adapter_name].data = vt[: self.r[adapter_name], :].contiguous()
+                    self.lora_B[adapter_name].data = u[:, : self.r[adapter_name]].contiguous()
 
 
 class SVDLinear(nn.Module, SVFTLayer):
