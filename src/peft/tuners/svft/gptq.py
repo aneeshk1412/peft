@@ -29,6 +29,7 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
         train_B: bool = False,
         s_gating: bool = False,
         rank_one: bool = False,
+        rank_one_gating: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -48,6 +49,7 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
             train_B=train_B,
             s_gating=s_gating,
             rank_one=rank_one,
+            rank_one_gating=rank_one_gating,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

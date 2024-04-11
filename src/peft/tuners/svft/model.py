@@ -122,6 +122,7 @@ class SVFTModel(LoraModel):
             "init_weights": lora_config.init_weights,
             "rank_one": lora_config.rank_one,
             "s_gating": lora_config.s_gating,
+            "rank_one_gating": lora_config.rank_one_gating,
             "loaded_in_8bit": getattr(self.model, "is_loaded_in_8bit", False),
             "loaded_in_4bit": getattr(self.model, "is_loaded_in_4bit", False),
         }
@@ -153,6 +154,7 @@ class SVFTModel(LoraModel):
                 train_B=lora_config.train_B,
                 rank_one=lora_config.rank_one,
                 s_gating=lora_config.s_gating,
+                rank_one_gating=lora_config.rank_one_gating,
             )
 
     @staticmethod

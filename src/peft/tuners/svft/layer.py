@@ -51,6 +51,7 @@ class SVFTLayer(LoraLayer):
         train_B=False,
         s_gating=False,
         rank_one=False,
+        rank_one_gating=False,
     ):
         if r <= 0:
             raise ValueError(f"`r` should be a positive integer, but the value passed is {r}")
@@ -77,6 +78,8 @@ class SVFTLayer(LoraLayer):
         if rank_one:
             self.lora_rank_one_B[adapter_name] = nn.Parameter(torch.randn(self.in_features, 1), requires_grad=True)
             self.lora_rank_one_At[adapter_name] = nn.Parameter(torch.randn(1, self.out_features), requires_grad=True)
+
+        if rank_one and rank_one_gating:
             self.lora_gate_rank_one[adapter_name] = nn.Parameter(torch.zeros(1), requires_grad=True)
 
         # Scaling factor (square root of the rank)
@@ -145,6 +148,7 @@ class SVDLinear(nn.Module, SVFTLayer):
         train_B: bool = False,
         s_gating: bool = False,
         rank_one: bool = False,
+        rank_one_gating: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -164,6 +168,7 @@ class SVDLinear(nn.Module, SVFTLayer):
             train_B=train_B,
             s_gating=s_gating,
             rank_one=rank_one,
+            rank_one_gating=rank_one_gating,
         )
 
     def merge(self, safe_merge: bool = False, adapter_names: Optional[List[str]] = None) -> None:
@@ -222,10 +227,11 @@ class SVDLinear(nn.Module, SVFTLayer):
         if adapter in self.lora_gate_S.keys():
             lora_S = F.tanh(self.lora_gate_S[adapter]) * lora_S
         scaling = self.scaling[adapter]
+        if adapter in self.lora_rank_one_At.keys():
+            lora_rank_one = self.lora_rank_one_B[adapter] @ self.lora_rank_one_At[adapter]
         if adapter in self.lora_gate_rank_one.keys():
-            lora_rank_one = F.tanh(self.lora_gate_rank_one[adapter]) * (
-                self.lora_rank_one_B[adapter] @ self.lora_rank_one_At[adapter]
-            )
+            lora_rank_one = F.tanh(self.lora_gate_rank_one[adapter]) * lora_rank_one
+
         return transpose(lora_V @ (lora_Ut * lora_S) + lora_rank_one, self.fan_in_fan_out) * scaling
 
     def get_delta_weight_transpose(self, adapter) -> torch.Tensor:
@@ -235,10 +241,11 @@ class SVDLinear(nn.Module, SVFTLayer):
         if adapter in self.lora_gate_S.keys():
             lora_S = F.tanh(self.lora_gate_S[adapter]) * lora_S
         scaling = self.scaling[adapter]
+        if adapter in self.lora_rank_one_At.keys():
+            lora_rank_one = self.lora_rank_one_B[adapter] @ self.lora_rank_one_At[adapter]
         if adapter in self.lora_gate_rank_one.keys():
-            lora_rank_one = F.tanh(self.lora_gate_rank_one[adapter]) * (
-                self.lora_rank_one_B[adapter] @ self.lora_rank_one_At[adapter]
-            )
+            lora_rank_one = F.tanh(self.lora_gate_rank_one[adapter]) * lora_rank_one
+
         return (lora_V @ (lora_Ut * lora_S) + lora_rank_one) * scaling
 
     def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:

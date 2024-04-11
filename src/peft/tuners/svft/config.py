@@ -39,6 +39,8 @@ class SVFTConfig(LoraConfig):
             Set this to True if you want to use the s-gating mechanism. Defaults to False.
         rank_one (`bool`):
             Set this to True if you want to use the rank-one addition. Defaults to False.
+        rank_one_gating (`bool`):
+            Set this to True if you want to use the gating mechanism on rank one addition. Defaults to False.
     """
 
     train_A: bool = field(
@@ -71,6 +73,12 @@ class SVFTConfig(LoraConfig):
     rank_one: bool = field(
         default=False,
         metadata={"help": "Set this to True if you want to use the rank-one addition. Defaults to False."},
+    )
+    rank_one_gating: bool = field(
+        default=False,
+        metadata={
+            "help": "Set this to True if you want to use the gating mechanism on rank one addition. Defaults to False."
+        },
     )
 
     def __post_init__(self):

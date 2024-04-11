@@ -37,6 +37,7 @@ if is_bnb_available():
             train_B: bool = False,
             s_gating: bool = False,
             rank_one: bool = False,
+            rank_one_gating: bool = False,
             **kwargs,
         ) -> None:
             super().__init__()
@@ -55,6 +56,7 @@ if is_bnb_available():
                 train_B=train_B,
                 s_gating=s_gating,
                 rank_one=rank_one,
+                rank_one_gating=rank_one_gating,
             )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -104,6 +106,7 @@ if is_bnb_4bit_available():
             train_B: bool = False,
             s_gating: bool = False,
             rank_one: bool = False,
+            rank_one_gating: bool = False,
             **kwargs,
         ) -> None:
             super().__init__()
@@ -122,6 +125,7 @@ if is_bnb_4bit_available():
                 train_B=train_B,
                 s_gating=s_gating,
                 rank_one=rank_one,
+                rank_one_gating=rank_one_gating,
             )
 
         def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
