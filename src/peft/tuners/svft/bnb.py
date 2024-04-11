@@ -30,11 +30,13 @@ if is_bnb_available():
             base_layer: torch.nn.Module,
             adapter_name: str,
             r: int = 1,
-            train_A: bool = False,
-            train_B: bool = False,
             lora_alpha: int = 1,
             lora_dropout: float = 0.0,
             init_weights: str = "svd",
+            train_A: bool = False,
+            train_B: bool = False,
+            s_gating: bool = False,
+            rank_one: bool = False,
             **kwargs,
         ) -> None:
             super().__init__()
@@ -43,7 +45,17 @@ if is_bnb_available():
             self.get_base_layer().weight.requires_grad = False
 
             self._active_adapter = adapter_name
-            self.update_layer(adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_weights)
+            self.update_layer(
+                adapter_name,
+                r,
+                lora_alpha,
+                lora_dropout,
+                init_weights,
+                train_A=train_A,
+                train_B=train_B,
+                s_gating=s_gating,
+                rank_one=rank_one,
+            )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             # note: no check for self.merged because merging is not supported (yet)
@@ -53,7 +65,7 @@ if is_bnb_available():
                 return result
 
             for active_adapter in self.active_adapters:
-                if active_adapter not in self.lora_A.keys():
+                if active_adapter not in self.lora_S.keys():
                     continue
                 requires_conversion = not torch.is_autocast_enabled()
                 if requires_conversion:
@@ -61,16 +73,12 @@ if is_bnb_available():
                     if x.dtype != torch.float32:
                         x = x.float()
 
-                lora_A = self.lora_A[active_adapter]
-                lora_B = self.lora_B[active_adapter]
-                lora_E = self.lora_E[active_adapter]
                 dropout = self.lora_dropout[active_adapter]
-                scaling = self.scaling[active_adapter]
+                w = self.get_delta_weight_transpose(active_adapter)
+                output = dropout(x) @ w
 
-                output = dropout(x) @ (lora_A * lora_E).T @ lora_B.T
                 if requires_conversion:
                     output = output.to(expected_dtype)
-                output = output * scaling
                 # inplace operation on view is forbidden for MatMul8bitLtBackward, so avoid it
                 result = result + output
             return result
@@ -89,11 +97,13 @@ if is_bnb_4bit_available():
             base_layer: torch.nn.Module,
             adapter_name: str,
             r: int = 1,
-            train_A: bool = False,
-            train_B: bool = False,
             lora_alpha: int = 1,
             lora_dropout: float = 0.0,
             init_weights: str = "svd",
+            train_A: bool = False,
+            train_B: bool = False,
+            s_gating: bool = False,
+            rank_one: bool = False,
             **kwargs,
         ) -> None:
             super().__init__()
@@ -102,7 +112,17 @@ if is_bnb_4bit_available():
             self.get_base_layer().weight.requires_grad = False
 
             self._active_adapter = adapter_name
-            self.update_layer(adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_weights)
+            self.update_layer(
+                adapter_name,
+                r,
+                lora_alpha,
+                lora_dropout,
+                init_weights,
+                train_A=train_A,
+                train_B=train_B,
+                s_gating=s_gating,
+                rank_one=rank_one,
+            )
 
         def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
             # note: no check for self.merged because merging is not supported (yet)
@@ -119,26 +139,24 @@ if is_bnb_4bit_available():
             result = result.clone()
 
             for active_adapter in self.active_adapters:
-                if active_adapter not in self.lora_A.keys():
+                if active_adapter not in self.lora_S.keys():
                     continue
 
-                lora_A = self.lora_A[active_adapter]
-                lora_B = self.lora_B[active_adapter]
-                lora_E = self.lora_E[active_adapter]
-                dropout = self.lora_dropout[active_adapter]
-                scaling = self.scaling[active_adapter]
+                lora_S = self.lora_S[active_adapter]
 
                 requires_conversion = not torch.is_autocast_enabled()
                 if requires_conversion:
                     expected_dtype = result.dtype
-                    compute_dtype = lora_A.dtype
+                    compute_dtype = lora_S.dtype
                     if x.dtype != compute_dtype:
                         x = x.to(compute_dtype)
 
-                output = dropout(x) @ (lora_A * lora_E).T @ lora_B.T
+                dropout = self.lora_dropout[active_adapter]
+                w = self.get_delta_weight_transpose(active_adapter)
+                output = dropout(x) @ w
+
                 if requires_conversion:
                     output = output.to(expected_dtype)
-                output = output * scaling
                 result += output
             return result
 

@@ -22,11 +22,13 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
         base_layer,
         adapter_name,
         r: int = 1,
-        train_A: bool = False,
-        train_B: bool = False,
         lora_alpha: int = 1,
         lora_dropout: float = 0.0,
         init_weights: str = "svd",
+        train_A: bool = False,
+        train_B: bool = False,
+        s_gating: bool = False,
+        rank_one: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -36,7 +38,17 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
         # for backwards compatibility
         self.quant_linear_module = base_layer
         self._active_adapter = adapter_name
-        self.update_layer(adapter_name, r, train_A, train_B, lora_alpha, lora_dropout, init_weights)
+        self.update_layer(
+            adapter_name,
+            r,
+            lora_alpha,
+            lora_dropout,
+            init_weights,
+            train_A=train_A,
+            train_B=train_B,
+            s_gating=s_gating,
+            rank_one=rank_one,
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         result = self.quant_linear_module(x)
@@ -45,13 +57,8 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
             return result
 
         for active_adapter in self.active_adapters:
-            if active_adapter not in self.lora_A.keys():
+            if active_adapter not in self.lora_S.keys():
                 continue
-            lora_A = self.lora_A[active_adapter]
-            lora_B = self.lora_B[active_adapter]
-            lora_E = self.lora_E[active_adapter]
-            dropout = self.lora_dropout[active_adapter]
-            scaling = self.scaling[active_adapter]
 
             requires_conversion = not torch.is_autocast_enabled()
             if requires_conversion:
@@ -59,7 +66,10 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
                 if x.dtype != torch.float32:
                     x = x.float()
 
-            output = (dropout(x) @ (lora_A * lora_E).T @ lora_B.T) * scaling
+            dropout = self.lora_dropout[active_adapter]
+            w = self.get_delta_weight_transpose(active_adapter)
+            output = dropout(x) @ w
+
             # TODO: here, the dtype conversion is applied on the *whole expression*,
             # not the intermediate result, unlike for SVDLinear8bitLT and
             # SVDLinear4bit, is that correct?

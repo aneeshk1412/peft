@@ -35,14 +35,23 @@ class SVFTConfig(LoraConfig):
             s_kunif: Initialize the singular values using a kaiming uniform distribution and the left and right singular vectors using the SVD of the weight matrix.
             uv_kunif: Initialize the left and right singular vectors using a kaiming uniform distribution and the singular values to zero.
             suv_kunif: Initialize the left and right singular vectors and singular values using a kaiming uniform distribution.
+        s_gating (`bool`):
+            Set this to True if you want to use the s-gating mechanism. Defaults to False.
+        rank_one (`bool`):
+            Set this to True if you want to use the rank-one addition. Defaults to False.
     """
+
     train_A: bool = field(
         default=False,
-        metadata={"help": "Set this to True if the left singular vectors of the weights are to be trained. Defaults to False."}
+        metadata={
+            "help": "Set this to True if the left singular vectors of the weights are to be trained. Defaults to False."
+        },
     )
     train_B: bool = field(
         default=False,
-        metadata={"help": "Set this to True if the right singular vectors of the weights are to be trained. Defaults to False."}
+        metadata={
+            "help": "Set this to True if the right singular vectors of the weights are to be trained. Defaults to False."
+        },
     )
     init_weights: Literal["svd", "s_kunif", "uv_kunif", "suv_kunif"] = field(
         default=True,
@@ -55,7 +64,14 @@ class SVFTConfig(LoraConfig):
             ),
         },
     )
-
+    s_gating: bool = field(
+        default=False,
+        metadata={"help": "Set this to True if you want to use the s-gating mechanism. Defaults to False."},
+    )
+    rank_one: bool = field(
+        default=False,
+        metadata={"help": "Set this to True if you want to use the rank-one addition. Defaults to False."},
+    )
 
     def __post_init__(self):
         self.peft_type = PeftType.SVFT

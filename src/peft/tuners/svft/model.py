@@ -27,9 +27,10 @@ from peft.utils import (
     get_quantization_config,
 )
 
-from .gptq import SVDQuantLinear
-from .layer import SVFTLayer, SVDLinear
 from .config import SVFTConfig
+from .gptq import SVDQuantLinear
+from .layer import SVDLinear, SVFTLayer
+
 
 class SVFTModel(LoraModel):
     """
@@ -49,7 +50,8 @@ class SVFTModel(LoraModel):
         >>> from peft import SVFTModel, SVFTConfig
         >>> config = SVFTConfig(
                 peft_type="SVFT", task_type="SEQ_2_SEQ_LM", r=8, lora_alpha=32, target_modules=["q", "v"],
-                lora_dropout=0.01,
+                lora_dropout=0.01, init_weights="svd", train_A=True, train_B=True,
+                rank_one=False, s_gating=False, fan_in_fan_out=True, inference_mode=False
             )
         >>> model = AutoModelForSeq2SeqLM.from_pretrained("t5-base") >>> model = SVFTModel(model, config, "default")
 
@@ -118,6 +120,8 @@ class SVFTModel(LoraModel):
             "fan_in_fan_out": lora_config.fan_in_fan_out,
             "init_lora_weights": lora_config.init_lora_weights,
             "init_weights": lora_config.init_weights,
+            "rank_one": lora_config.rank_one,
+            "s_gating": lora_config.s_gating,
             "loaded_in_8bit": getattr(self.model, "is_loaded_in_8bit", False),
             "loaded_in_4bit": getattr(self.model, "is_loaded_in_4bit", False),
         }
@@ -142,11 +146,13 @@ class SVFTModel(LoraModel):
             target.update_layer(
                 adapter_name,
                 lora_config.r,
-                lora_config.train_A,
-                lora_config.train_B,
                 lora_config.lora_alpha,
                 lora_config.lora_dropout,
                 lora_config.init_weights,
+                train_A=lora_config.train_A,
+                train_B=lora_config.train_B,
+                rank_one=lora_config.rank_one,
+                s_gating=lora_config.s_gating,
             )
 
     @staticmethod
@@ -221,9 +227,7 @@ class SVFTModel(LoraModel):
         if peft_config.target_modules is None:
             if model_config["model_type"] not in TRANSFORMERS_MODELS_TO_SVFT_TARGET_MODULES_MAPPING:
                 raise ValueError("Please specify `target_modules` in `peft_config`")
-            peft_config.target_modules = TRANSFORMERS_MODELS_TO_SVFT_TARGET_MODULES_MAPPING[
-                model_config["model_type"]
-            ]
+            peft_config.target_modules = TRANSFORMERS_MODELS_TO_SVFT_TARGET_MODULES_MAPPING[model_config["model_type"]]
         return peft_config
 
     def __getattr__(self, name: str):
