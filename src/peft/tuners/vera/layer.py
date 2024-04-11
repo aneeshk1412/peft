@@ -178,11 +178,12 @@ class VeraLinear(nn.Module, VeraLayer):
                 self.get_base_layer().weight.data -= self.get_delta_weight(active_adapter)
 
     def get_delta_w(self, adapter) -> torch.Tensor:
+        ## B (in, r) , IS (r, 1), A (r, out), OS (1, out)
         lora_vera_IS = self.lora_vera_IS[adapter]
         lora_vera_OS = self.lora_vera_OS[adapter]
         lora_vera_A = self.lora_vera_A[adapter]
         lora_vera_B = self.lora_vera_B[adapter]
-        return (lora_vera_B @ (lora_vera_A * lora_vera_IS)) * lora_vera_OS
+        return (lora_vera_B @ torch.diag(lora_vera_IS.squeeze()) @ lora_vera_A) @ torch.diag(lora_vera_OS.squeeze())
 
     def get_delta_weight(self, adapter) -> torch.Tensor:
         scaling = self.scaling[adapter]
