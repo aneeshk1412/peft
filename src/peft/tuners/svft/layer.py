@@ -235,7 +235,7 @@ class SVDLinear(nn.Module, SVFTLayer):
             w += lora_rank_one
 
         scaling = self.scaling[adapter]
-        return transpose(w, self.fan_in_fan_out) * scaling
+        return transpose(w.T, self.fan_in_fan_out) * scaling
 
     def get_delta_weight_transpose(self, adapter) -> torch.Tensor:
         lora_Ut = self.lora_Ut[adapter]
