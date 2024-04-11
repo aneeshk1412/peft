@@ -30,12 +30,13 @@ class PeftType(str, enum.Enum):
     - PREFIX_TUNING
     - LORA
     - ADALORA
+    - SVFT
+    - VERA
     - ADAPTION_PROMPT
     - IA3
     - LOHA
     - LOKR
     - OFT
-    - SVFT
     """
 
     PROMPT_TUNING = "PROMPT_TUNING"
@@ -44,13 +45,14 @@ class PeftType(str, enum.Enum):
     PREFIX_TUNING = "PREFIX_TUNING"
     LORA = "LORA"
     ADALORA = "ADALORA"
+    SVFT = "SVFT"
+    VERA = "VERA"
     ADAPTION_PROMPT = "ADAPTION_PROMPT"
     IA3 = "IA3"
     LOHA = "LOHA"
     LOKR = "LOKR"
     OFT = "OFT"
     POLY = "POLY"
-    SVFT = "SVFT"
 
 
 class TaskType(str, enum.Enum):

@@ -205,8 +205,15 @@ class LoraModel(BaseTuner):
 
         # note: AdaLoraLayer is a subclass of LoraLayer, we need to exclude it
         from peft.tuners.adalora import AdaLoraLayer
+        from peft.tuners.svft import SVFTLayer
+        from peft.tuners.vera import VeraLayer
 
-        if isinstance(target, LoraLayer) and not isinstance(target, AdaLoraLayer):
+        if (
+            isinstance(target, LoraLayer)
+            and not isinstance(target, AdaLoraLayer)
+            and not isinstance(target, SVFTLayer)
+            and not isinstance(target, VeraLayer)
+        ):
             target.update_layer(
                 adapter_name,
                 r,

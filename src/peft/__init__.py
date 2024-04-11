@@ -61,6 +61,8 @@ from .tuners import (
     AdaLoraModel,
     SVFTConfig,
     SVFTModel,
+    VeraConfig,
+    VeraModel,
     PrefixEncoder,
     PrefixTuningConfig,
     PromptEmbedding,

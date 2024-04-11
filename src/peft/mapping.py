@@ -49,6 +49,10 @@ from .tuners import (
     PrefixTuningConfig,
     PromptEncoderConfig,
     PromptTuningConfig,
+    SVFTConfig,
+    SVFTModel,
+    VeraConfig,
+    VeraModel,
 )
 from .utils import _prepare_prompt_learning_config
 
@@ -75,6 +79,8 @@ PEFT_TYPE_TO_CONFIG_MAPPING: dict[str, PeftConfig] = {
     "LOHA": LoHaConfig,
     "LOKR": LoKrConfig,
     "ADALORA": AdaLoraConfig,
+    "SVFT": SVFTConfig,
+    "VERA": VeraConfig,
     "IA3": IA3Config,
     "MULTITASK_PROMPT_TUNING": MultitaskPromptTuningConfig,
     "OFT": OFTConfig,
@@ -86,6 +92,8 @@ PEFT_TYPE_TO_TUNER_MAPPING = {
     "LOHA": LoHaModel,
     "LOKR": LoKrModel,
     "ADALORA": AdaLoraModel,
+    "SVFT": SVFTModel,
+    "VERA": VeraModel,
     "IA3": IA3Model,
     "OFT": OFTModel,
     "POLY": PolyModel,
