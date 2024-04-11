@@ -226,13 +226,16 @@ class SVDLinear(nn.Module, SVFTLayer):
         lora_S = self.lora_S[adapter]
         if adapter in self.lora_gate_S.keys():
             lora_S = F.tanh(self.lora_gate_S[adapter]) * lora_S
-        scaling = self.scaling[adapter]
+        w = lora_V @ (lora_Ut * lora_S)
+
         if adapter in self.lora_rank_one_At.keys():
             lora_rank_one = self.lora_rank_one_B[adapter] @ self.lora_rank_one_At[adapter]
-        if adapter in self.lora_gate_rank_one.keys():
-            lora_rank_one = F.tanh(self.lora_gate_rank_one[adapter]) * lora_rank_one
+            if adapter in self.lora_gate_rank_one.keys():
+                lora_rank_one = F.tanh(self.lora_gate_rank_one[adapter]) * lora_rank_one
+            w += lora_rank_one
 
-        return transpose(lora_V @ (lora_Ut * lora_S) + lora_rank_one, self.fan_in_fan_out) * scaling
+        scaling = self.scaling[adapter]
+        return transpose(w, self.fan_in_fan_out) * scaling
 
     def get_delta_weight_transpose(self, adapter) -> torch.Tensor:
         lora_Ut = self.lora_Ut[adapter]
@@ -240,13 +243,16 @@ class SVDLinear(nn.Module, SVFTLayer):
         lora_S = self.lora_S[adapter]
         if adapter in self.lora_gate_S.keys():
             lora_S = F.tanh(self.lora_gate_S[adapter]) * lora_S
-        scaling = self.scaling[adapter]
+        w = lora_V @ (lora_Ut * lora_S)
+
         if adapter in self.lora_rank_one_At.keys():
             lora_rank_one = self.lora_rank_one_B[adapter] @ self.lora_rank_one_At[adapter]
-        if adapter in self.lora_gate_rank_one.keys():
-            lora_rank_one = F.tanh(self.lora_gate_rank_one[adapter]) * lora_rank_one
+            if adapter in self.lora_gate_rank_one.keys():
+                lora_rank_one = F.tanh(self.lora_gate_rank_one[adapter]) * lora_rank_one
+            w += lora_rank_one
 
-        return (lora_V @ (lora_Ut * lora_S) + lora_rank_one) * scaling
+        scaling = self.scaling[adapter]
+        return w * scaling
 
     def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
         if self.disable_adapters:
