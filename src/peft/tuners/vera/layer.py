@@ -25,10 +25,7 @@ from peft.utils import transpose
 
 class VeraLayer(LoraLayer):
     # List all names of layers that may contain adapter weights
-    adapter_layer_names = (
-        "lora_vera_IS",
-        "lora_vera_OS",
-    )
+    adapter_layer_names = ()
     # other_param_names is defined in LoraLayer
 
     def __init__(self, base_layer: nn.Module) -> None:
@@ -70,6 +67,10 @@ class VeraLayer(LoraLayer):
 
         self.lora_vera_IS[adapter_name] = nn.Parameter(torch.ones(1, r), requires_grad=train_IS)
         self.lora_vera_OS[adapter_name] = nn.Parameter(torch.ones(1, self.out_features), requires_grad=train_OS)
+        if self.train_IS[adapter_name]:
+            self.adapter_layer_names += ("lora_vera_IS",)
+        if self.train_OS[adapter_name]:
+            self.adapter_layer_names += ("lora_vera_OS",)
 
         self.lora_vera_B[adapter_name] = nn.Linear(r, self.out_features, bias=False)
         self.lora_vera_B[adapter_name].requires_grad_(False)
