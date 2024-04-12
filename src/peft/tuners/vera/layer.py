@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import warnings
-from math import sqrt
 from typing import Any, List, Optional
 
 import torch
@@ -38,8 +37,8 @@ class VeraLayer(LoraLayer):
         self.train_OS = {}
         self.lora_vera_IS = nn.ParameterDict({})
         self.lora_vera_OS = nn.ParameterDict({})
-        self.lora_vera_A = nn.ParameterDict({})
-        self.lora_vera_B = nn.ParameterDict({})
+        self.lora_vera_B = nn.ModuleDict({})
+        self.lora_vera_A = nn.ModuleDict({})
 
     def update_layer(
         self,
@@ -69,14 +68,15 @@ class VeraLayer(LoraLayer):
         self.train_IS[adapter_name] = train_IS
         self.train_OS[adapter_name] = train_OS
 
-        self.lora_vera_IS[adapter_name] = nn.Parameter(torch.ones(r, 1), requires_grad=train_IS)
+        self.lora_vera_IS[adapter_name] = nn.Parameter(torch.ones(1, r), requires_grad=train_IS)
         self.lora_vera_OS[adapter_name] = nn.Parameter(torch.ones(1, self.out_features), requires_grad=train_OS)
 
-        self.lora_vera_A[adapter_name] = nn.Parameter(torch.randn(r, self.out_features), requires_grad=False)
-        self.lora_vera_B[adapter_name] = nn.Parameter(torch.randn(self.in_features, r), requires_grad=False)
+        self.lora_vera_B[adapter_name] = nn.Linear(r, self.out_features, bias=False)
+        self.lora_vera_B[adapter_name].requires_grad_(False)
+        self.lora_vera_A[adapter_name] = nn.Linear(self.in_features, r, bias=False)
+        self.lora_vera_A[adapter_name].requires_grad_(False)
 
-        # Scaling factor (square root of the rank)
-        self.scaling[adapter_name] = lora_alpha if lora_alpha > 0 else 1.0 / sqrt(r)
+        self.scaling[adapter_name] = 1.0
 
         self.reset_lora_parameters(adapter_name)
 
@@ -89,8 +89,8 @@ class VeraLayer(LoraLayer):
 
     def reset_lora_parameters(self, adapter_name):
         if adapter_name in self.lora_vera_IS.keys():
-            nn.init.kaiming_uniform_(self.lora_vera_A[adapter_name])
-            nn.init.kaiming_uniform_(self.lora_vera_B[adapter_name])
+            nn.init.kaiming_uniform_(self.lora_vera_B[adapter_name].weight)
+            nn.init.kaiming_uniform_(self.lora_vera_A[adapter_name].weight)
 
             if self.train_IS[adapter_name]:
                 nn.init.zeros_(self.lora_vera_IS[adapter_name])
@@ -177,23 +177,24 @@ class VeraLinear(nn.Module, VeraLayer):
             if active_adapter in self.lora_vera_IS.keys():
                 self.get_base_layer().weight.data -= self.get_delta_weight(active_adapter)
 
-    def get_delta_w(self, adapter) -> torch.Tensor:
+    def get_delta_weight(self, adapter) -> torch.Tensor:
         ## B (in, r) , IS (r, 1), A (r, out), OS (1, out)
         lora_vera_IS = self.lora_vera_IS[adapter]
         lora_vera_OS = self.lora_vera_OS[adapter]
-        lora_vera_A = self.lora_vera_A[adapter]
-        lora_vera_B = self.lora_vera_B[adapter]
-        return (lora_vera_B @ torch.diag(lora_vera_IS.squeeze()) @ lora_vera_A) @ torch.diag(lora_vera_OS.squeeze())
-
-    def get_delta_weight(self, adapter) -> torch.Tensor:
+        lora_vera_A = self.lora_vera_B[adapter].weight
+        lora_vera_B = self.lora_vera_A[adapter].weight
         scaling = self.scaling[adapter]
-        w = self.get_delta_w(adapter)
+        w = (lora_vera_A @ torch.diag(lora_vera_IS.squeeze()) @ lora_vera_B) @ torch.diag(lora_vera_OS.squeeze())
         return transpose(w.T, self.fan_in_fan_out) * scaling
 
-    def get_delta_weight_transpose(self, adapter) -> torch.Tensor:
-        scaling = self.scaling[adapter]
-        w = self.get_delta_w(adapter)
-        return w * scaling
+    def forward_adapter(self, x: torch.Tensor, adapter_name: str) -> torch.Tensor:
+        lora_vera_IS = self.lora_vera_IS[adapter_name]
+        lora_vera_OS = self.lora_vera_OS[adapter_name]
+        lora_vera_A = self.lora_vera_A[adapter_name]
+        lora_vera_B = self.lora_vera_B[adapter_name]
+        lora_dropout = self.lora_dropout[adapter_name]
+        scaling = self.scaling[adapter_name]
+        return lora_vera_OS * lora_vera_B(lora_vera_IS * lora_vera_A(lora_dropout(x))) * scaling
 
     def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
         if self.disable_adapters:
@@ -208,10 +209,8 @@ class VeraLinear(nn.Module, VeraLayer):
                 if active_adapter not in self.lora_vera_IS.keys():
                     continue
 
-                dropout = self.lora_dropout[active_adapter]
                 x = x.to(self.lora_vera_IS[active_adapter].dtype)
-                w = self.get_delta_weight_transpose(active_adapter)
-                result += dropout(x) @ w
+                result += self.forward_adapter(x, active_adapter)
 
         return result
 

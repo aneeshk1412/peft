@@ -67,9 +67,7 @@ if is_bnb_available():
                     if x.dtype != torch.float32:
                         x = x.float()
 
-                dropout = self.lora_dropout[active_adapter]
-                w = self.get_delta_weight_transpose(active_adapter)
-                output = dropout(x) @ w
+                output = self.forward_adapter(x, active_adapter)
 
                 if requires_conversion:
                     output = output.to(expected_dtype)
@@ -139,9 +137,7 @@ if is_bnb_4bit_available():
                     if x.dtype != compute_dtype:
                         x = x.to(compute_dtype)
 
-                dropout = self.lora_dropout[active_adapter]
-                w = self.get_delta_weight_transpose(active_adapter)
-                output = dropout(x) @ w
+                output = self.forward_adapter(x, active_adapter)
 
                 if requires_conversion:
                     output = output.to(expected_dtype)

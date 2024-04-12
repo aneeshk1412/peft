@@ -60,9 +60,7 @@ class VeraQuantLinear(torch.nn.Module, VeraLayer):
                 if x.dtype != torch.float32:
                     x = x.float()
 
-            dropout = self.lora_dropout[active_adapter]
-            w = self.get_delta_weight_transpose(active_adapter)
-            output = dropout(x) @ w
+            output = self.forward_adapter(x, active_adapter)
 
             # TODO: here, the dtype conversion is applied on the *whole expression*,
             # not the intermediate result, unlike for VeraLinear8bitLT and
