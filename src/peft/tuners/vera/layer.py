@@ -179,21 +179,21 @@ class VeraLinear(nn.Module, VeraLayer):
 
     def get_delta_weight(self, adapter) -> torch.Tensor:
         ## B (in, r) , IS (r, 1), A (r, out), OS (1, out)
-        lora_vera_IS = self.lora_vera_IS[adapter]
-        lora_vera_OS = self.lora_vera_OS[adapter]
-        lora_vera_A = self.lora_vera_B[adapter].weight
-        lora_vera_B = self.lora_vera_A[adapter].weight
+        lora_vera_IS_mat = torch.diag(self.lora_vera_IS[adapter].squeeze())
+        lora_vera_OS_mat = torch.diag(self.lora_vera_OS[adapter].squeeze())
+        lora_vera_A_mat = self.lora_vera_A[adapter].weight
+        lora_vera_B_mat = self.lora_vera_B[adapter].weight
         scaling = self.scaling[adapter]
-        w = (lora_vera_A @ torch.diag(lora_vera_IS.squeeze()) @ lora_vera_B) @ torch.diag(lora_vera_OS.squeeze())
-        return transpose(w.T, self.fan_in_fan_out) * scaling
+        w = lora_vera_OS_mat @ lora_vera_B_mat @ lora_vera_IS_mat @ lora_vera_A_mat
+        return transpose(w, self.fan_in_fan_out) * scaling
 
-    def forward_adapter(self, x: torch.Tensor, adapter_name: str) -> torch.Tensor:
-        lora_vera_IS = self.lora_vera_IS[adapter_name]
-        lora_vera_OS = self.lora_vera_OS[adapter_name]
-        lora_vera_A = self.lora_vera_A[adapter_name]
-        lora_vera_B = self.lora_vera_B[adapter_name]
-        lora_dropout = self.lora_dropout[adapter_name]
-        scaling = self.scaling[adapter_name]
+    def forward_adapter(self, x: torch.Tensor, active_adapter: str) -> torch.Tensor:
+        lora_vera_IS = self.lora_vera_IS[active_adapter]
+        lora_vera_OS = self.lora_vera_OS[active_adapter]
+        lora_vera_A = self.lora_vera_A[active_adapter]
+        lora_vera_B = self.lora_vera_B[active_adapter]
+        lora_dropout = self.lora_dropout[active_adapter]
+        scaling = self.scaling[active_adapter]
         return lora_vera_OS * lora_vera_B(lora_vera_IS * lora_vera_A(lora_dropout(x))) * scaling
 
     def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
