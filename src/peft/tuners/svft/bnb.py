@@ -32,12 +32,13 @@ if is_bnb_available():
             r: int = 1,
             lora_alpha: int = 1,
             lora_dropout: float = 0.0,
-            init_weights: str = "svd",
-            train_A: bool = False,
-            train_B: bool = False,
-            s_gating: bool = False,
-            rank_one: bool = False,
-            rank_one_gating: bool = False,
+            train_delta_S=True,
+            init_U="svd",
+            init_V="svd",
+            init_delta_S="svd",
+            gate_delta_S=False,
+            rank_r=False,
+            gate_rank_r=False,
             **kwargs,
         ) -> None:
             super().__init__()
@@ -51,12 +52,13 @@ if is_bnb_available():
                 r,
                 lora_alpha,
                 lora_dropout,
-                init_weights,
-                train_A=train_A,
-                train_B=train_B,
-                s_gating=s_gating,
-                rank_one=rank_one,
-                rank_one_gating=rank_one_gating,
+                train_delta_S=train_delta_S,
+                init_U=init_U,
+                init_V=init_V,
+                init_delta_S=init_delta_S,
+                gate_delta_S=gate_delta_S,
+                rank_r=rank_r,
+                gate_rank_r=gate_rank_r,
             )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -67,7 +69,7 @@ if is_bnb_available():
                 return result
 
             for active_adapter in self.active_adapters:
-                if active_adapter not in self.lora_S.keys():
+                if active_adapter not in self.svft_Ut.keys():
                     continue
                 requires_conversion = not torch.is_autocast_enabled()
                 if requires_conversion:
@@ -76,8 +78,7 @@ if is_bnb_available():
                         x = x.float()
 
                 dropout = self.lora_dropout[active_adapter]
-                w = self.get_delta_weight_transpose(active_adapter)
-                output = dropout(x) @ w
+                output = self.forward_adapter(active_adapter, dropout(x))
 
                 if requires_conversion:
                     output = output.to(expected_dtype)
@@ -101,12 +102,13 @@ if is_bnb_4bit_available():
             r: int = 1,
             lora_alpha: int = 1,
             lora_dropout: float = 0.0,
-            init_weights: str = "svd",
-            train_A: bool = False,
-            train_B: bool = False,
-            s_gating: bool = False,
-            rank_one: bool = False,
-            rank_one_gating: bool = False,
+            train_delta_S=True,
+            init_U="svd",
+            init_V="svd",
+            init_delta_S="svd",
+            gate_delta_S=False,
+            rank_r=False,
+            gate_rank_r=False,
             **kwargs,
         ) -> None:
             super().__init__()
@@ -120,12 +122,13 @@ if is_bnb_4bit_available():
                 r,
                 lora_alpha,
                 lora_dropout,
-                init_weights,
-                train_A=train_A,
-                train_B=train_B,
-                s_gating=s_gating,
-                rank_one=rank_one,
-                rank_one_gating=rank_one_gating,
+                train_delta_S=train_delta_S,
+                init_U=init_U,
+                init_V=init_V,
+                init_delta_S=init_delta_S,
+                gate_delta_S=gate_delta_S,
+                rank_r=rank_r,
+                gate_rank_r=gate_rank_r,
             )
 
         def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
@@ -143,21 +146,20 @@ if is_bnb_4bit_available():
             result = result.clone()
 
             for active_adapter in self.active_adapters:
-                if active_adapter not in self.lora_S.keys():
+                if active_adapter not in self.svft_Ut.keys():
                     continue
 
-                lora_S = self.lora_S[active_adapter]
+                svft_Ut = self.svft_Ut[active_adapter].weight
 
                 requires_conversion = not torch.is_autocast_enabled()
                 if requires_conversion:
                     expected_dtype = result.dtype
-                    compute_dtype = lora_S.dtype
+                    compute_dtype = svft_Ut.dtype
                     if x.dtype != compute_dtype:
                         x = x.to(compute_dtype)
 
                 dropout = self.lora_dropout[active_adapter]
-                w = self.get_delta_weight_transpose(active_adapter)
-                output = dropout(x) @ w
+                output = self.forward_adapter(active_adapter, dropout(x))
 
                 if requires_conversion:
                     output = output.to(expected_dtype)

@@ -24,12 +24,13 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
         r: int = 1,
         lora_alpha: int = 1,
         lora_dropout: float = 0.0,
-        init_weights: str = "svd",
-        train_A: bool = False,
-        train_B: bool = False,
-        s_gating: bool = False,
-        rank_one: bool = False,
-        rank_one_gating: bool = False,
+        train_delta_S=True,
+        init_U="svd",
+        init_V="svd",
+        init_delta_S="svd",
+        gate_delta_S=False,
+        rank_r=False,
+        gate_rank_r=False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -44,12 +45,13 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
             r,
             lora_alpha,
             lora_dropout,
-            init_weights,
-            train_A=train_A,
-            train_B=train_B,
-            s_gating=s_gating,
-            rank_one=rank_one,
-            rank_one_gating=rank_one_gating,
+            train_delta_S=train_delta_S,
+            init_U=init_U,
+            init_V=init_V,
+            init_delta_S=init_delta_S,
+            gate_delta_S=gate_delta_S,
+            rank_r=rank_r,
+            gate_rank_r=gate_rank_r,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -59,7 +61,7 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
             return result
 
         for active_adapter in self.active_adapters:
-            if active_adapter not in self.lora_S.keys():
+            if active_adapter not in self.svft_Ut.keys():
                 continue
 
             requires_conversion = not torch.is_autocast_enabled()
@@ -69,8 +71,7 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
                     x = x.float()
 
             dropout = self.lora_dropout[active_adapter]
-            w = self.get_delta_weight_transpose(active_adapter)
-            output = dropout(x) @ w
+            output = self.forward_adapter(active_adapter, dropout(x))
 
             # TODO: here, the dtype conversion is applied on the *whole expression*,
             # not the intermediate result, unlike for SVDLinear8bitLT and

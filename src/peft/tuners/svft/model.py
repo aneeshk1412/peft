@@ -50,8 +50,10 @@ class SVFTModel(LoraModel):
         >>> from peft import SVFTModel, SVFTConfig
         >>> config = SVFTConfig(
                 peft_type="SVFT", task_type="SEQ_2_SEQ_LM", r=8, lora_alpha=32, target_modules=["q", "v"],
-                lora_dropout=0.01, init_weights="svd", train_A=True, train_B=True,
-                rank_one=False, s_gating=False, fan_in_fan_out=True, inference_mode=False
+                lora_dropout=0.01, train_U=False, train_V=False, train_delta_S=True,
+                init_U="svd", init_V="svd", init_delta_S="zero",
+                gate_delta_S=False, rank_r=None, gate_rank_r=False,
+                fan_in_fan_out=True, inference_mode=False
             )
         >>> model = AutoModelForSeq2SeqLM.from_pretrained("t5-base") >>> model = SVFTModel(model, config, "default")
 
@@ -104,7 +106,7 @@ class SVFTModel(LoraModel):
 
     def _create_and_replace(
         self,
-        lora_config,
+        svft_config,
         adapter_name,
         target,
         target_name,
@@ -112,17 +114,18 @@ class SVFTModel(LoraModel):
         current_key,
     ):
         kwargs = {
-            "r": lora_config.r,
-            "train_A": lora_config.train_A,
-            "train_B": lora_config.train_B,
-            "lora_alpha": lora_config.lora_alpha,
-            "lora_dropout": lora_config.lora_dropout,
-            "fan_in_fan_out": lora_config.fan_in_fan_out,
-            "init_lora_weights": lora_config.init_lora_weights,
-            "init_weights": lora_config.init_weights,
-            "rank_one": lora_config.rank_one,
-            "s_gating": lora_config.s_gating,
-            "rank_one_gating": lora_config.rank_one_gating,
+            "r": svft_config.r,
+            "lora_alpha": svft_config.lora_alpha,
+            "lora_dropout": svft_config.lora_dropout,
+            "fan_in_fan_out": svft_config.fan_in_fan_out,
+            "init_lora_weights": svft_config.init_lora_weights,
+            "train_delta_S": svft_config.train_delta_S,
+            "init_U": svft_config.init_U,
+            "init_V": svft_config.init_V,
+            "init_delta_S": svft_config.init_delta_S,
+            "gate_delta_S": svft_config.gate_delta_S,
+            "rank_r": svft_config.rank_r,
+            "gate_rank_r": svft_config.gate_rank_r,
             "loaded_in_8bit": getattr(self.model, "is_loaded_in_8bit", False),
             "loaded_in_4bit": getattr(self.model, "is_loaded_in_4bit", False),
         }
@@ -138,7 +141,7 @@ class SVFTModel(LoraModel):
 
         # If it is not an SVFTLayer, create a new module, else update it with new adapters
         if not isinstance(target, SVFTLayer):
-            new_module = self._create_new_module(lora_config, adapter_name, target, **kwargs)
+            new_module = self._create_new_module(svft_config, adapter_name, target, **kwargs)
             if adapter_name != self.active_adapter:
                 # adding an additional adapter: it is not automatically trainable
                 new_module.requires_grad_(False)
@@ -146,15 +149,16 @@ class SVFTModel(LoraModel):
         else:
             target.update_layer(
                 adapter_name,
-                lora_config.r,
-                lora_config.lora_alpha,
-                lora_config.lora_dropout,
-                lora_config.init_weights,
-                train_A=lora_config.train_A,
-                train_B=lora_config.train_B,
-                rank_one=lora_config.rank_one,
-                s_gating=lora_config.s_gating,
-                rank_one_gating=lora_config.rank_one_gating,
+                svft_config.r,
+                svft_config.lora_alpha,
+                svft_config.lora_dropout,
+                train_delta_S=svft_config.train_delta_S,
+                init_U=svft_config.init_U,
+                init_V=svft_config.init_V,
+                init_delta_S=svft_config.init_delta_S,
+                gate_delta_S=svft_config.gate_delta_S,
+                rank_r=svft_config.rank_r,
+                gate_rank_r=svft_config.gate_rank_r,
             )
 
     @staticmethod

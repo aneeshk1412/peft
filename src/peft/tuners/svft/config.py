@@ -25,59 +25,60 @@ class SVFTConfig(LoraConfig):
     This is the configuration class to store the configuration of a [`~peft.SVFT`].
 
     Args:
-        train_A (`bool`):
-            Set this to True if the left singular vectors of the weights are to be trained. Defaults to False.
-        train_B (`bool`):
-            Set this to True if the right singular vectors of the weights are to be trained. Defaults to False.
-        init_svft_weights (`Literal["svd", "s_kunif", "uv_kunif", "suv_kunif"]`):
-            How to initialize the weights of the SVFT layer. Defaults to "svd".
-            svd: Initialize the left and right singular vectors using SVD of the weight and the singular values to zero.
-            s_kunif: Initialize the singular values using a kaiming uniform distribution and the left and right singular vectors using the SVD of the weight matrix.
-            uv_kunif: Initialize the left and right singular vectors using a kaiming uniform distribution and the singular values to zero.
-            suv_kunif: Initialize the left and right singular vectors and singular values using a kaiming uniform distribution.
-        s_gating (`bool`):
-            Set this to True if you want to use the s-gating mechanism. Defaults to False.
-        rank_one (`bool`):
-            Set this to True if you want to use the rank-one addition. Defaults to False.
-        rank_one_gating (`bool`):
-            Set this to True if you want to use the gating mechanism on rank one addition. Defaults to False.
+        train_delta_S (`bool`):
+            Set this to True if the singular values of the weights are to be trained. Defaults to True.
+        init_U (`Literal["svd", "kunif"]`):
+            How to initialize the left singular vectors of the weights. Defaults to "svd".
+        init_V (`Literal["svd", "kunif"]`):
+            How to initialize the right singular vectors of the weights. Defaults to "svd".
+        init_delta_S (`Literal["zero", "kunif"]`):
+            How to initialize the singular values of the weights. Defaults to "zero".
+        gate_delta_S (`bool`):
+            Set this to True if you want to use the gating mechanism on the singular values. Defaults to False.
+        rank_r (`int` | `None`):
+            Adds additional rank r LoRA layers to the model. Defaults to None.
+        gate_rank_r (`bool`):
+            Set this to True if you want to use the gating mechanism on the rank r addition. Defaults to False.
     """
 
-    train_A: bool = field(
-        default=False,
-        metadata={
-            "help": "Set this to True if the left singular vectors of the weights are to be trained. Defaults to False."
-        },
-    )
-    train_B: bool = field(
-        default=False,
-        metadata={
-            "help": "Set this to True if the right singular vectors of the weights are to be trained. Defaults to False."
-        },
-    )
-    init_weights: Literal["svd", "s_kunif", "uv_kunif", "suv_kunif"] = field(
+    train_delta_S: bool = field(
         default=True,
         metadata={
-            "help": (
-                "How to initialize the weights of the SVFT layer. Defaults to 'svd'. "
-                "svd: Initialize the left and right singular vectors using SVD of the weight and the singular values to zero. "
-                "s_kunif: Initialize the singular values using a kaiming uniform distribution and the left and right singular vectors using the SVD of the weight matrix. "
-                "suv_kunif: Initialize the left and right singular vectors and singular values using a kaiming uniform distribution. "
-            ),
+            "help": "Set this to True if the singular values of the weights are to be trained. Defaults to True."
         },
     )
-    s_gating: bool = field(
-        default=False,
-        metadata={"help": "Set this to True if you want to use the s-gating mechanism. Defaults to False."},
+
+    init_U: Literal["svd", "kunif"] = field(
+        default="svd",
+        metadata={"help": "How to initialize the left singular vectors of the weights. Defaults to 'svd'."},
     )
-    rank_one: bool = field(
-        default=False,
-        metadata={"help": "Set this to True if you want to use the rank-one addition. Defaults to False."},
+
+    init_V: Literal["svd", "kunif"] = field(
+        default="svd",
+        metadata={"help": "How to initialize the right singular vectors of the weights. Defaults to 'svd'."},
     )
-    rank_one_gating: bool = field(
+
+    init_delta_S: Literal["zero", "kunif"] = field(
+        default="zero",
+        metadata={"help": "How to initialize the singular values of the weights. Defaults to 'zero'."},
+    )
+
+    gate_delta_S: bool = field(
         default=False,
         metadata={
-            "help": "Set this to True if you want to use the gating mechanism on rank one addition. Defaults to False."
+            "help": "Set this to True if you want to use the gating mechanism on the singular values. Defaults to False."
+        },
+    )
+
+    rank_r: int = field(
+        default=None,
+        metadata={"help": "Adds additional rank r LoRA layers to the model. Defaults to None."},
+    )
+
+    gate_rank_r: bool = field(
+        default=False,
+        metadata={
+            "help": "Set this to True if you want to use the gating mechanism on the rank r addition. Defaults to False."
         },
     )
 
