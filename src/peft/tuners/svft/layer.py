@@ -31,13 +31,13 @@ class SVFTLayer(LoraLayer):
 
     def __init__(self, base_layer: nn.Module) -> None:
         super().__init__(base_layer)
-        self.svft_Ut = nn.ModuleDict({})
-        self.svft_V = nn.ModuleDict({})
-        self.svft_delta_S = nn.ParameterDict({})
-        self.svft_gate_delta_S = nn.ParameterDict({})
-        self.svft_rank_r_A = nn.ModuleDict({})
-        self.svft_rank_r_B = nn.ModuleDict({})
-        self.svft_gate_rank_r = nn.ParameterDict({})
+        self.lora_svft_Ut = nn.ModuleDict({})
+        self.lora_svft_V = nn.ModuleDict({})
+        self.lora_svft_delta_S = nn.ParameterDict({})
+        self.lora_svft_gate_delta_S = nn.ParameterDict({})
+        self.lora_svft_rank_r_A = nn.ModuleDict({})
+        self.lora_svft_rank_r_B = nn.ModuleDict({})
+        self.lora_svft_gate_rank_r = nn.ParameterDict({})
 
         self.train_delta_S = {}
         self.gate_delta_S = {}
@@ -88,27 +88,27 @@ class SVFTLayer(LoraLayer):
         self.init_V[adapter_name] = init_V
         self.init_delta_S[adapter_name] = init_delta_S
 
-        self.svft_Ut[adapter_name] = nn.Linear(r, self.out_features, bias=False)
-        self.svft_V[adapter_name] = nn.Linear(self.in_features, r, bias=False)
-        self.svft_Ut[adapter_name].requires_grad_(False)
-        self.svft_V[adapter_name].requires_grad_(False)
+        self.lora_svft_Ut[adapter_name] = nn.Linear(r, self.out_features, bias=False)
+        self.lora_svft_V[adapter_name] = nn.Linear(self.in_features, r, bias=False)
+        self.lora_svft_Ut[adapter_name].requires_grad_(False)
+        self.lora_svft_V[adapter_name].requires_grad_(False)
 
         if train_delta_S:
-            self.svft_delta_S[adapter_name] = nn.Parameter(torch.zeros(1, r), requires_grad=train_delta_S)
-            self.adapter_layer_names = self.adapter_layer_names + ("svft_delta_S",)
+            self.lora_svft_delta_S[adapter_name] = nn.Parameter(torch.zeros(1, r), requires_grad=train_delta_S)
+            self.adapter_layer_names = self.adapter_layer_names + ("lora_svft_delta_S",)
 
         if gate_delta_S:
-            self.svft_gate_delta_S[adapter_name] = nn.Parameter(torch.zeros(1), requires_grad=True)
-            self.adapter_layer_names = self.adapter_layer_names + ("svft_gate_delta_S",)
+            self.lora_svft_gate_delta_S[adapter_name] = nn.Parameter(torch.zeros(1), requires_grad=True)
+            self.adapter_layer_names = self.adapter_layer_names + ("lora_svft_gate_delta_S",)
 
         if rank_r:
-            self.svft_rank_r_A[adapter_name] = nn.Linear(self.in_features, r, bias=False)
-            self.svft_rank_r_B[adapter_name] = nn.Linear(r, self.out_features, bias=False)
-            self.adapter_layer_names = self.adapter_layer_names + ("svft_rank_r_A", "svft_rank_r_B")
+            self.lora_svft_rank_r_A[adapter_name] = nn.Linear(self.in_features, r, bias=False)
+            self.lora_svft_rank_r_B[adapter_name] = nn.Linear(r, self.out_features, bias=False)
+            self.adapter_layer_names = self.adapter_layer_names + ("lora_svft_rank_r_A", "lora_svft_rank_r_B")
 
         if gate_rank_r:
-            self.svft_gate_rank_r[adapter_name] = nn.Parameter(torch.zeros(1), requires_grad=True)
-            self.adapter_layer_names = self.adapter_layer_names + ("svft_gate_rank_r",)
+            self.lora_svft_gate_rank_r[adapter_name] = nn.Parameter(torch.zeros(1), requires_grad=True)
+            self.adapter_layer_names = self.adapter_layer_names + ("lora_svft_gate_rank_r",)
 
         self.reset_lora_parameters(adapter_name)
 
@@ -120,31 +120,34 @@ class SVFTLayer(LoraLayer):
         self.set_adapter(self.active_adapters)
 
     def reset_lora_parameters(self, adapter_name):
-        if adapter_name in self.svft_Ut.keys():
+        if adapter_name in self.lora_svft_Ut.keys():
             if "svd" in (self.init_U[adapter_name], self.init_V[adapter_name]):
                 U, _, Vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=False)
 
             if self.init_U[adapter_name] == "svd":
-                self.svft_Ut[adapter_name].weight.data = U[:, : self.r[adapter_name]]
-            else:
-                nn.init.kaiming_uniform_(self.svft_Ut[adapter_name].weight)
+                self.lora_svft_Ut[adapter_name].weight.data = U[:, : self.r[adapter_name]]
+            elif self.init_U[adapter_name] == "kunif":
+                nn.init.kaiming_uniform_(self.lora_svft_Ut[adapter_name].weight)
 
             if self.init_V[adapter_name] == "svd":
-                self.svft_V[adapter_name].weight.data = Vt[: self.r[adapter_name], :]
-            else:
-                nn.init.kaiming_uniform_(self.svft_V[adapter_name].weight)
+                self.lora_svft_V[adapter_name].weight.data = Vt[: self.r[adapter_name], :]
+            elif self.init_V[adapter_name] == "kunif":
+                nn.init.kaiming_uniform_(self.lora_svft_V[adapter_name].weight)
 
-            nn.init.zeros_(self.svft_delta_S[adapter_name])
+            if self.init_delta_S[adapter_name] == "svd":
+                nn.init.zeros_(self.lora_svft_delta_S[adapter_name])
+            elif self.init_delta_S[adapter_name] == "kunif":
+                nn.init.kaiming_uniform_(self.lora_svft_delta_S[adapter_name])
 
             if self.gate_delta_S[adapter_name]:
-                nn.init.zeros_(self.svft_gate_delta_S[adapter_name])
+                nn.init.zeros_(self.lora_svft_gate_delta_S[adapter_name])
 
             if self.rank_r[adapter_name]:
-                nn.init.kaiming_uniform_(self.svft_rank_r_A[adapter_name].weight)
-                nn.init.kaiming_uniform_(self.svft_rank_r_B[adapter_name].weight)
+                nn.init.kaiming_uniform_(self.lora_svft_rank_r_A[adapter_name].weight)
+                nn.init.kaiming_uniform_(self.lora_svft_rank_r_B[adapter_name].weight)
 
             if self.gate_rank_r[adapter_name]:
-                nn.init.zeros_(self.svft_gate_rank_r[adapter_name])
+                nn.init.zeros_(self.lora_svft_gate_rank_r[adapter_name])
 
 
 class SVDLinear(nn.Module, SVFTLayer):
@@ -207,7 +210,7 @@ class SVDLinear(nn.Module, SVFTLayer):
 
         for active_adapter in adapter_names:
             base_layer = self.get_base_layer()
-            if active_adapter in self.svft_Ut.keys():
+            if active_adapter in self.lora_svft_Ut.keys():
                 if safe_merge:
                     # Note that safe_merge will be slower than the normal merge
                     # because of the copy operation.
@@ -233,22 +236,22 @@ class SVDLinear(nn.Module, SVFTLayer):
             return
         while len(self.merged_adapters) > 0:
             active_adapter = self.merged_adapters.pop()
-            if active_adapter in self.svft_Ut.keys():
+            if active_adapter in self.lora_svft_Ut.keys():
                 self.get_base_layer().weight.data -= self.get_delta_weight(active_adapter)
 
     def get_delta_weight(self, adapter) -> torch.Tensor:
-        Ut = self.svft_Ut[adapter].weight
-        V = self.svft_V[adapter].weight
-        delta_S = self.svft_delta_S[adapter]
+        Ut = self.lora_svft_Ut[adapter].weight
+        V = self.lora_svft_V[adapter].weight
+        delta_S = self.lora_svft_delta_S[adapter]
         scaling = self.scaling[adapter]
 
         w = Ut @ (delta_S.T * V)
         return transpose(w, self.fan_in_fan_out) * scaling
 
     def forward_adapter(self, adapter_name: str, x: torch.Tensor) -> torch.Tensor:
-        Ut = self.svft_Ut[adapter_name]
-        V = self.svft_V[adapter_name]
-        delta_S = self.svft_delta_S[adapter_name]
+        Ut = self.lora_svft_Ut[adapter_name]
+        V = self.lora_svft_V[adapter_name]
+        delta_S = self.lora_svft_delta_S[adapter_name]
         return Ut(delta_S * V(x)) * self.scaling[adapter_name]
 
     def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
@@ -261,11 +264,11 @@ class SVDLinear(nn.Module, SVFTLayer):
         else:
             result = self.base_layer(x, *args, **kwargs)
             for active_adapter in self.active_adapters:
-                if active_adapter not in self.svft_Ut.keys():
+                if active_adapter not in self.lora_svft_Ut.keys():
                     continue
 
                 dropout = self.lora_dropout[active_adapter]
-                x = x.to(self.svft_Ut[active_adapter].weight.dtype)
+                x = x.to(self.lora_svft_Ut[active_adapter].weight.dtype)
                 result += self.forward_adapter(active_adapter, dropout(x))
 
         return result

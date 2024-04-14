@@ -61,7 +61,7 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
             return result
 
         for active_adapter in self.active_adapters:
-            if active_adapter not in self.svft_Ut.keys():
+            if active_adapter not in self.lora_svft_Ut.keys():
                 continue
 
             requires_conversion = not torch.is_autocast_enabled()

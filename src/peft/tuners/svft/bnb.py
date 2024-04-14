@@ -69,7 +69,7 @@ if is_bnb_available():
                 return result
 
             for active_adapter in self.active_adapters:
-                if active_adapter not in self.svft_Ut.keys():
+                if active_adapter not in self.lora_svft_Ut.keys():
                     continue
                 requires_conversion = not torch.is_autocast_enabled()
                 if requires_conversion:
@@ -146,15 +146,15 @@ if is_bnb_4bit_available():
             result = result.clone()
 
             for active_adapter in self.active_adapters:
-                if active_adapter not in self.svft_Ut.keys():
+                if active_adapter not in self.lora_svft_Ut.keys():
                     continue
 
-                svft_Ut = self.svft_Ut[active_adapter].weight
+                lora_svft_Ut = self.lora_svft_Ut[active_adapter].weight
 
                 requires_conversion = not torch.is_autocast_enabled()
                 if requires_conversion:
                     expected_dtype = result.dtype
-                    compute_dtype = svft_Ut.dtype
+                    compute_dtype = lora_svft_Ut.dtype
                     if x.dtype != compute_dtype:
                         x = x.to(compute_dtype)
 
