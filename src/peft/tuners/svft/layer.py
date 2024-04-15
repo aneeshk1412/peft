@@ -131,7 +131,10 @@ class SVFTLayer(LoraLayer):
     def reset_lora_parameters(self, adapter_name):
         if adapter_name in self.lora_svft_Ut.keys():
             if "svd" in (self.init_U[adapter_name], self.init_V[adapter_name]):
-                U, _, Vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=False)
+                if self.fan_in_fan_out:
+                    U, _, Vt = torch.linalg.svd(self.get_base_layer().weight.T, full_matrices=False)
+                else:
+                    U, _, Vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=False)
 
             if self.init_U[adapter_name] == "svd":
                 self.lora_svft_Ut[adapter_name].weight.data = U[:, : self.r[adapter_name]].contiguous()
