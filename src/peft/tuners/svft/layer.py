@@ -128,12 +128,12 @@ class SVFTLayer(LoraLayer):
                 U, _, Vt = torch.linalg.svd(self.get_base_layer().weight, full_matrices=False)
 
             if self.init_U[adapter_name] == "svd":
-                self.lora_svft_Ut[adapter_name].weight.data = U[:, : self.r[adapter_name]]
+                self.lora_svft_Ut[adapter_name].weight.data = U[:, : self.r[adapter_name]].contiguous()
             elif self.init_U[adapter_name] == "kunif":
                 nn.init.kaiming_uniform_(self.lora_svft_Ut[adapter_name].weight)
 
             if self.init_V[adapter_name] == "svd":
-                self.lora_svft_V[adapter_name].weight.data = Vt[: self.r[adapter_name], :]
+                self.lora_svft_V[adapter_name].weight.data = Vt[: self.r[adapter_name], :].contiguous()
             elif self.init_V[adapter_name] == "kunif":
                 nn.init.kaiming_uniform_(self.lora_svft_V[adapter_name].weight)
 
