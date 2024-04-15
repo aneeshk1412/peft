@@ -17,6 +17,7 @@ from math import sqrt
 from typing import Any, List, Optional
 
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 from peft.tuners.lora import LoraLayer
@@ -47,6 +48,7 @@ class SVFTLayer(LoraLayer):
         self.init_U = {}
         self.init_V = {}
         self.init_delta_S = {}
+        self.elems_per_bin_delta_S = {}
 
     def update_layer(
         self,
@@ -58,8 +60,9 @@ class SVFTLayer(LoraLayer):
         init_U="svd",
         init_V="svd",
         init_delta_S="svd",
+        elems_per_bin_delta_S=1,
         gate_delta_S=False,
-        rank_r=False,
+        rank_r=None,
         gate_rank_r=False,
     ):
         if r is None:
@@ -90,6 +93,7 @@ class SVFTLayer(LoraLayer):
         self.init_U[adapter_name] = init_U
         self.init_V[adapter_name] = init_V
         self.init_delta_S[adapter_name] = init_delta_S
+        self.elems_per_bin_delta_S[adapter_name] = elems_per_bin_delta_S
 
         self.lora_svft_Ut[adapter_name] = nn.Linear(r, self.out_features, bias=False)
         self.lora_svft_V[adapter_name] = nn.Linear(self.in_features, r, bias=False)
@@ -97,7 +101,9 @@ class SVFTLayer(LoraLayer):
         self.lora_svft_V[adapter_name].requires_grad_(False)
 
         if train_delta_S:
-            self.lora_svft_delta_S[adapter_name] = nn.Parameter(torch.zeros(1, r), requires_grad=train_delta_S)
+            self.lora_svft_delta_S[adapter_name] = nn.Parameter(
+                torch.zeros(1, r // elems_per_bin_delta_S), requires_grad=train_delta_S
+            )
             self.adapter_layer_names = self.adapter_layer_names + ("lora_svft_delta_S",)
 
         if gate_delta_S:
@@ -105,8 +111,8 @@ class SVFTLayer(LoraLayer):
             self.adapter_layer_names = self.adapter_layer_names + ("lora_svft_gate_delta_S",)
 
         if rank_r:
-            self.lora_svft_rank_r_A[adapter_name] = nn.Linear(self.in_features, r, bias=False)
-            self.lora_svft_rank_r_B[adapter_name] = nn.Linear(r, self.out_features, bias=False)
+            self.lora_svft_rank_r_A[adapter_name] = nn.Linear(self.in_features, rank_r, bias=False)
+            self.lora_svft_rank_r_B[adapter_name] = nn.Linear(rank_r, self.out_features, bias=False)
             self.adapter_layer_names = self.adapter_layer_names + ("lora_svft_rank_r_A", "lora_svft_rank_r_B")
 
         if gate_rank_r:
@@ -146,11 +152,12 @@ class SVFTLayer(LoraLayer):
                 nn.init.zeros_(self.lora_svft_gate_delta_S[adapter_name])
 
             if self.rank_r[adapter_name]:
-                nn.init.kaiming_uniform_(self.lora_svft_rank_r_A[adapter_name].weight)
+                nn.init.zeros_(self.lora_svft_rank_r_A[adapter_name].weight)
                 nn.init.kaiming_uniform_(self.lora_svft_rank_r_B[adapter_name].weight)
 
             if self.gate_rank_r[adapter_name]:
                 nn.init.zeros_(self.lora_svft_gate_rank_r[adapter_name])
+                nn.init.kaiming_uniform_(self.lora_svft_rank_r_A[adapter_name].weight)
 
 
 class SVDLinear(nn.Module, SVFTLayer):
@@ -167,8 +174,9 @@ class SVDLinear(nn.Module, SVFTLayer):
         init_U="svd",
         init_V="svd",
         init_delta_S="svd",
+        elems_per_bin_delta_S=1,
         gate_delta_S=False,
-        rank_r=False,
+        rank_r=None,
         gate_rank_r=False,
         **kwargs,
     ) -> None:
@@ -188,6 +196,7 @@ class SVDLinear(nn.Module, SVFTLayer):
             init_U=init_U,
             init_V=init_V,
             init_delta_S=init_delta_S,
+            elems_per_bin_delta_S=elems_per_bin_delta_S,
             gate_delta_S=gate_delta_S,
             rank_r=rank_r,
             gate_rank_r=gate_rank_r,
@@ -247,15 +256,19 @@ class SVDLinear(nn.Module, SVFTLayer):
         V = self.lora_svft_V[adapter].weight
         delta_S = self.lora_svft_delta_S[adapter]
         scaling = self.scaling[adapter]
+        elems_per_bin_delta_S = self.elems_per_bin_delta_S[adapter]
+        delta_S = F.sigmoid(self.lora_svft_gate_delta_S[adapter]) * delta_S
 
-        w = Ut @ (delta_S.T * V)
+        w = Ut @ (delta_S.repeat_interleave(elems_per_bin_delta_S, dim=-1).T * V)
         return transpose(w, self.fan_in_fan_out) * scaling
 
     def forward_adapter(self, adapter_name: str, x: torch.Tensor) -> torch.Tensor:
         Ut = self.lora_svft_Ut[adapter_name]
         V = self.lora_svft_V[adapter_name]
+        elems_per_bin_delta_S = self.elems_per_bin_delta_S[adapter_name]
         delta_S = self.lora_svft_delta_S[adapter_name]
-        return Ut(delta_S * V(x)) * self.scaling[adapter_name]
+        delta_S = F.sigmoid(self.lora_svft_gate_delta_S[adapter_name]) * delta_S
+        return Ut(delta_S.repeat_interleave(elems_per_bin_delta_S, dim=-1) * V(x)) * self.scaling[adapter_name]
 
     def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
         if self.disable_adapters:

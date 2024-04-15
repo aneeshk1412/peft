@@ -28,8 +28,9 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
         init_U="svd",
         init_V="svd",
         init_delta_S="svd",
+        elems_per_bin_delta_S=1,
         gate_delta_S=False,
-        rank_r=False,
+        rank_r=None,
         gate_rank_r=False,
         **kwargs,
     ) -> None:
@@ -49,6 +50,7 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
             init_U=init_U,
             init_V=init_V,
             init_delta_S=init_delta_S,
+            elems_per_bin_delta_S=elems_per_bin_delta_S,
             gate_delta_S=gate_delta_S,
             rank_r=rank_r,
             gate_rank_r=gate_rank_r,

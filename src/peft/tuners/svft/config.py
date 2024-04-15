@@ -35,6 +35,8 @@ class SVFTConfig(LoraConfig):
             How to initialize the right singular vectors of the weights. Defaults to "svd".
         init_delta_S (`Literal["zero", "kunif"]`):
             How to initialize the singular values of the weights. Defaults to "zero".
+        elems_per_bin_delta_S (`int`):
+            Number of elements per bin to use for binning the trainable singular values. Defaults to 1.
         gate_delta_S (`bool`):
             Set this to True if you want to use the gating mechanism on the singular values. Defaults to False.
         rank_r (`int` | `None`):
@@ -68,6 +70,13 @@ class SVFTConfig(LoraConfig):
     init_delta_S: Literal["zero", "kunif"] = field(
         default="zero",
         metadata={"help": "How to initialize the singular values of the weights. Defaults to 'zero'."},
+    )
+
+    elems_per_bin_delta_S: int = field(
+        default=1,
+        metadata={
+            "help": "Number of elements per bin to use for binning the trainable singular values. Defaults to 1."
+        },
     )
 
     gate_delta_S: bool = field(

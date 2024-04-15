@@ -51,7 +51,7 @@ class SVFTModel(LoraModel):
         >>> config = SVFTConfig(
                 peft_type="SVFT", task_type="SEQ_2_SEQ_LM", r=8, lora_alpha=32, target_modules=["q", "v"],
                 lora_dropout=0.01, train_U=False, train_V=False, train_delta_S=True,
-                init_U="svd", init_V="svd", init_delta_S="zero",
+                init_U="svd", init_V="svd", init_delta_S="zero", elems_per_bin_delta_S=1,
                 gate_delta_S=False, rank_r=None, gate_rank_r=False,
                 fan_in_fan_out=True, inference_mode=False
             )
@@ -123,6 +123,7 @@ class SVFTModel(LoraModel):
             "init_U": svft_config.init_U,
             "init_V": svft_config.init_V,
             "init_delta_S": svft_config.init_delta_S,
+            "elems_per_bin_delta_S": svft_config.elems_per_bin_delta_S,
             "gate_delta_S": svft_config.gate_delta_S,
             "rank_r": svft_config.rank_r,
             "gate_rank_r": svft_config.gate_rank_r,
@@ -156,6 +157,7 @@ class SVFTModel(LoraModel):
                 init_U=svft_config.init_U,
                 init_V=svft_config.init_V,
                 init_delta_S=svft_config.init_delta_S,
+                elems_per_bin_delta_S=svft_config.elems_per_bin_delta_S,
                 gate_delta_S=svft_config.gate_delta_S,
                 rank_r=svft_config.rank_r,
                 gate_rank_r=svft_config.gate_rank_r,
