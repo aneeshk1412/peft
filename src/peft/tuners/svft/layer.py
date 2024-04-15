@@ -62,6 +62,9 @@ class SVFTLayer(LoraLayer):
         rank_r=False,
         gate_rank_r=False,
     ):
+        if r is None:
+            r = min(self.in_features, self.out_features)
+
         if r <= 0:
             raise ValueError(f"`r` should be a positive integer, but the value passed is {r}")
 
@@ -156,7 +159,7 @@ class SVDLinear(nn.Module, SVFTLayer):
         self,
         base_layer: nn.Module,
         adapter_name: str,
-        r: int = 1,
+        r: int | None = None,
         lora_alpha: int = 1,
         lora_dropout: float = 0.0,
         fan_in_fan_out: bool = False,

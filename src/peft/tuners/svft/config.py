@@ -25,6 +25,8 @@ class SVFTConfig(LoraConfig):
     This is the configuration class to store the configuration of a [`~peft.SVFT`].
 
     Args:
+        r (`int` | None):
+            The rank of the SVD approximation. Defaults to None which does a full-rank approximation.
         train_delta_S (`bool`):
             Set this to True if the singular values of the weights are to be trained. Defaults to True.
         init_U (`Literal["svd", "kunif"]`):
@@ -40,6 +42,11 @@ class SVFTConfig(LoraConfig):
         gate_rank_r (`bool`):
             Set this to True if you want to use the gating mechanism on the rank r addition. Defaults to False.
     """
+
+    r: int = field(
+        default=None,
+        metadata={"help": "The rank of the SVD approximation. Defaults to None which does a full-rank approximation."},
+    )
 
     train_delta_S: bool = field(
         default=True,

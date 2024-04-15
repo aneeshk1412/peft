@@ -21,7 +21,7 @@ class SVDQuantLinear(torch.nn.Module, SVFTLayer):
         self,
         base_layer,
         adapter_name,
-        r: int = 1,
+        r: int | None = None,
         lora_alpha: int = 1,
         lora_dropout: float = 0.0,
         train_delta_S=True,
