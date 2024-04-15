@@ -166,7 +166,7 @@ class SVDLinear(nn.Module, SVFTLayer):
         self,
         base_layer: nn.Module,
         adapter_name: str,
-        r: int | None = None,
+        r=None,
         lora_alpha: int = 1,
         lora_dropout: float = 0.0,
         fan_in_fan_out: bool = False,
