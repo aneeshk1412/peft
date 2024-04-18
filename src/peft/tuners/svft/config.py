@@ -57,12 +57,12 @@ class SVFTConfig(LoraConfig):
         },
     )
 
-    init_U: Literal["svd", "kunif"] = field(
+    init_U: Literal["svd", "kunif", "ortho"] = field(
         default="svd",
         metadata={"help": "How to initialize the left singular vectors of the weights. Defaults to 'svd'."},
     )
 
-    init_V: Literal["svd", "kunif"] = field(
+    init_V: Literal["svd", "kunif", "ortho"] = field(
         default="svd",
         metadata={"help": "How to initialize the right singular vectors of the weights. Defaults to 'svd'."},
     )
