@@ -115,6 +115,23 @@ def get_peft_model_state_dict(
         else:
             raise NotImplementedError
 
+    elif config.peft_type == PeftType.SVFT:
+        bias = config.bias
+        if bias == "none":
+            to_return = {k: state_dict[k] for k in state_dict if "svft_" in k}
+        elif bias == "all":
+            to_return = {k: state_dict[k] for k in state_dict if "svft_" in k or "bias" in k}
+        elif bias == "svft_only":
+            to_return = {}
+            for k in state_dict:
+                if "svft_" in k:
+                    to_return[k] = state_dict[k]
+                    bias_name = k.split("svft_")[0] + "bias"
+                    if bias_name in state_dict:
+                        to_return[bias_name] = state_dict[bias_name]
+        else:
+            raise NotImplementedError
+
     elif config.peft_type == PeftType.LOHA:
         to_return = {k: state_dict[k] for k in state_dict if "hada_" in k}
 
@@ -308,6 +325,7 @@ def set_peft_model_state_dict(
             PeftType.BOFT: "boft_",
             PeftType.LN_TUNING: "ln_tuning_",
             PeftType.VERA: "vera_lambda_",
+            PeftType.SVFT: "svft_",
         }[config.peft_type]
         for k, v in state_dict.items():
             if parameter_prefix in k:
