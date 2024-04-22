@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from dataclasses import dataclass, field
 from typing import List, Literal, Optional, Union
 
@@ -29,6 +30,10 @@ class SVFTConfig(PeftConfig):
             Rank of the decomposition. If unspecified, the rank will be set to min(input_dim, output_dim).
         use_gaussian (`bool`):
             Use Gaussian initialization for off-diagonals in SVFT. Default is False.
+        use_rank_one (`bool`):
+            Use rank one bias for SVFT. Default is False.
+        only_rank_one (`bool`):
+            Use only rank one bias for SVFT ablation. Default is False.
         target_modules (`Union[List[str], str]`):
             The names of the modules to apply SVFT to. Only linear layers are supported.
         svft_dropout (`float`):
@@ -57,6 +62,8 @@ class SVFTConfig(PeftConfig):
     use_gaussian: bool = field(
         default=False, metadata={"help": "Use Gaussian initialization for off-diagonals in SVFT."}
     )
+    use_rank_one: bool = field(default=False, metadata={"help": "Use rank one bias for SVFT."})
+    only_rank_one: bool = field(default=False, metadata={"help": "Use only rank one bias for SVFT ablation."})
 
     target_modules: Optional[Union[List[str], str]] = field(
         default=None,
@@ -115,3 +122,7 @@ class SVFTConfig(PeftConfig):
         self.target_modules = (
             set(self.target_modules) if isinstance(self.target_modules, list) else self.target_modules
         )
+
+        if self.only_rank_one and not self.use_rank_one:
+            warnings.warn("If only_rank_one is True, use_rank_one must be True as well. Setting use_rank_one to True.")
+            self.use_rank_one = True

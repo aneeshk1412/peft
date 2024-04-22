@@ -110,6 +110,8 @@ class SVFTModel(BaseTuner):
         kwargs = {
             "r": svft_config.r,
             "use_gaussian": svft_config.use_gaussian,
+            "use_rank_one": svft_config.use_rank_one,
+            "only_rank_one": svft_config.only_rank_one,
             "svft_dropout": svft_config.svft_dropout,
             "fan_in_fan_out": svft_config.fan_in_fan_out,
             "init_weights": svft_config.init_weights,
@@ -122,6 +124,8 @@ class SVFTModel(BaseTuner):
                 adapter_name,
                 r=svft_config.r,
                 use_gaussian=svft_config.use_gaussian,
+                use_rank_one=svft_config.use_rank_one,
+                only_rank_one=svft_config.only_rank_one,
                 svft_dropout=svft_config.svft_dropout,
                 init_weights=svft_config.init_weights,
             )
