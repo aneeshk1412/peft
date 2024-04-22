@@ -53,6 +53,8 @@ from .tuners import (
     PrefixTuningConfig,
     PromptEncoderConfig,
     PromptTuningConfig,
+    SVFTConfig,
+    SVFTModel,
     VeraConfig,
     VeraModel,
 )
@@ -89,6 +91,7 @@ PEFT_TYPE_TO_CONFIG_MAPPING: dict[str, type[PeftConfig]] = {
     "POLY": PolyConfig,
     "LN_TUNING": LNTuningConfig,
     "VERA": VeraConfig,
+    "SVFT": SVFTConfig,
 }
 
 PEFT_TYPE_TO_TUNER_MAPPING: dict[str, type[_BaseTuner]] = {
@@ -102,6 +105,7 @@ PEFT_TYPE_TO_TUNER_MAPPING: dict[str, type[_BaseTuner]] = {
     "POLY": PolyModel,
     "LN_TUNING": LNTuningModel,
     "VERA": VeraModel,
+    "SVFT": SVFTModel,
 }
 
 
